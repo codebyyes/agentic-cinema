@@ -1,0 +1,16 @@
+[project]
+name = "agentic-cinema"
+version = "0.1.0"
+description = "A starter Python project for building cinematic agent workflows with Gemini."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "google-genai>=2.20.0",
+]
+
+[project.scripts]
+agentic-cinema = "agentic_cinema.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

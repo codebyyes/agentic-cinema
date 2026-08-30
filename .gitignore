@@ -10,6 +10,15 @@ out-tsc
 
 # dependencies
 node_modules
+.venv/
+.pythonlibs/
+__pycache__/
+*.py[cod]
+
+# environment files
+.env
+.env.*
+!.env.example
 
 # IDEs and editors
 /.idea
