@@ -28,12 +28,11 @@ With no prompt, the CLI uses a built-in cinematic prompt:
 uv run agentic-cinema
 ```
 
-The default model is the fully qualified `models/gemini-1.5-flash` resource
-name for the requested connection test. Override it without changing code if
-your account exposes another model:
+The default model is `gemini-1.5-flash` for the requested connection test.
+Override it without changing code if your account exposes another model:
 
 ```bash
-GEMINI_MODEL=models/gemini-1.5-flash uv run agentic-cinema "Write a tense opening scene."
+GEMINI_MODEL=gemini-1.5-flash uv run agentic-cinema "Write a tense opening scene."
 ```
 
 ## Project layout
@@ -62,5 +61,5 @@ explicit and pass outputs between agents as regular Python values.
   variable store.
 - The Google Gen AI SDK is used directly so the requested Gemini model can be
   selected explicitly.
-- If Google no longer serves `models/gemini-1.5-flash` for your account, set
+- If Google no longer serves `gemini-1.5-flash` for your account, set
   `GEMINI_MODEL` to an available model.
