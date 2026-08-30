@@ -26,14 +26,20 @@ class GeminiClient:
     """
 
     # Keep the model configurable so the hackathon can switch models without
-    # changing application code.
-    model: str = "gemini-1.5-flash"
+    # changing application code. The full resource name is intentional.
+    model: str = "models/gemini-1.5-pro"
+
+    def __post_init__(self) -> None:
+        """Ensure requests use Google's fully qualified model resource name."""
+
+        if not self.model.startswith("models/"):
+            self.model = f"models/{self.model}"
 
     @classmethod
     def from_environment(cls) -> "GeminiClient":
         """Build a client using project environment variables."""
 
-        return cls(model=os.getenv("GEMINI_MODEL", "gemini-1.5-flash"))
+        return cls(model=os.getenv("GEMINI_MODEL", "models/gemini-1.5-pro"))
 
     def generate_text(
         self,

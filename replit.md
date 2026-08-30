@@ -10,7 +10,8 @@ API.
  - `uv run python -m compileall -q src` — compile-check the Python package
 
 Required secret: `GEMINI_API_KEY`.
-Optional environment variable: `GEMINI_MODEL` (defaults to `gemini-1.5-flash`).
+Optional environment variable: `GEMINI_MODEL` (defaults to
+`models/gemini-1.5-pro`).
 
 ## Stack
 
@@ -41,12 +42,14 @@ story beats, dialogue, camera direction, lighting, and sound notes.
 
 ## User preferences
 
-- Keep the requested model name `gemini-1.5-flash` as the default for now.
+- Keep the requested model resource `models/gemini-1.5-pro` as the default for
+  now.
 
 ## Gotchas
 
-- The configured API account currently returns `404` for
-  `gemini-1.5-flash`. The code preserves that requested model name and exposes
+- The configured API account previously returned `404` for
+  `gemini-1.5-flash`. The code now uses the requested full resource name and
+  exposes
   `GEMINI_MODEL` for switching only when the user chooses an available model.
 
 ## Pointers
