@@ -11,7 +11,7 @@ API.
 
 Required secret: `GOOGLE_API_KEY`.
 Optional environment variable: `GEMINI_MODEL` (defaults to
-`gemini-1.5-flash`).
+`gemini-2.5-flash`).
 
 ## Stack
 
@@ -42,13 +42,13 @@ story beats, dialogue, camera direction, lighting, and sound notes.
 
 ## User preferences
 
-- Keep the requested model name `gemini-1.5-flash` as the default for
+- Keep the requested model name `gemini-2.5-flash` as the default for
   now.
 
 ## Gotchas
 
-- The configured API account previously rejected the prefixed model name during
-  a Gemini request. The code now passes the unprefixed model name and exposes
+- The configured API account previously rejected the retired model during a
+  Gemini request. The code now uses `gemini-2.5-flash` and exposes
   `GEMINI_MODEL` for switching only when the user chooses an available model.
 
 ## Pointers

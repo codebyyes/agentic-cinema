@@ -28,13 +28,13 @@ class GeminiClient:
 
     # Keep the model configurable so the hackathon can switch models without
     # changing application code.
-    model: str = "gemini-1.5-flash"
+    model: str = "gemini-2.5-flash"
 
     @classmethod
     def from_environment(cls) -> "GeminiClient":
         """Build a client using project environment variables."""
 
-        return cls(model=os.getenv("GEMINI_MODEL", "gemini-1.5-flash"))
+        return cls(model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"))
 
     def generate_text(
         self,
