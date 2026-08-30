@@ -25,16 +25,15 @@ class GeminiClient:
     stores credentials in source code or in the repository.
     """
 
-    # Gemini 1.5 Pro was requested for the hackathon, but current Google API
-    # accounts may no longer expose it. Keep the model configurable and use a
-    # currently available Pro model by default.
-    model: str = "gemini-3.1-pro-preview"
+    # Keep the model configurable so the hackathon can switch models without
+    # changing application code.
+    model: str = "gemini-1.5-flash"
 
     @classmethod
     def from_environment(cls) -> "GeminiClient":
         """Build a client using project environment variables."""
 
-        return cls(model=os.getenv("GEMINI_MODEL", "gemini-3.1-pro-preview"))
+        return cls(model=os.getenv("GEMINI_MODEL", "gemini-1.5-flash"))
 
     def generate_text(
         self,
