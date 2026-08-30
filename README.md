@@ -28,14 +28,11 @@ With no prompt, the CLI uses a built-in cinematic prompt:
 uv run agentic-cinema
 ```
 
-The hackathon originally requested `gemini-1.5-pro`. Google currently reports
-that model as unavailable for this API account, and also restricts
-`gemini-2.5-pro` for new users, so the starter defaults to the supported
-`gemini-3.1-pro-preview`. Override it without changing code if your account
-exposes another model:
+The default model is `gemini-1.5-flash` for the requested connection test.
+Override it without changing code if your account exposes another model:
 
 ```bash
-GEMINI_MODEL=gemini-3.1-pro-preview uv run agentic-cinema "Write a tense opening scene."
+GEMINI_MODEL=gemini-1.5-flash uv run agentic-cinema "Write a tense opening scene."
 ```
 
 ## Project layout
@@ -62,7 +59,7 @@ explicit and pass outputs between agents as regular Python values.
 
 - Never commit `GEMINI_API_KEY`; use Replit Secrets or another secure environment
   variable store.
-- The Google Gen AI SDK is used directly so the requested Gemini 1.5 Pro model
-  can be selected explicitly.
-- If Google no longer serves `gemini-1.5-pro` for your account, set
+- The Google Gen AI SDK is used directly so the requested Gemini model can be
+  selected explicitly.
+- If Google no longer serves `gemini-1.5-flash` for your account, set
   `GEMINI_MODEL` to an available model.

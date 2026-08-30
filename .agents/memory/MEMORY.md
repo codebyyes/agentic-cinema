@@ -1,0 +1,1 @@
+- [Gemini model availability](gemini-model-availability.md) — keep model selection configurable and never silently hide provider-side availability errors.

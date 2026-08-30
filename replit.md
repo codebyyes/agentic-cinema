@@ -1,45 +1,54 @@
-# [Project name]
+# Agentic Cinema
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A Python starter for building cinematic agent workflows with the Google Gemini
+API.
 
-## Run & Operate
+## Run
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+ - `uv run agentic-cinema` — generate the built-in example scene
+ - `uv run agentic-cinema "Your scene idea"` — generate a scene from a prompt
+ - `uv run python -m compileall -q src` — compile-check the Python package
+
+Required secret: `GEMINI_API_KEY`.
+Optional environment variable: `GEMINI_MODEL` (defaults to `gemini-1.5-flash`).
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Python 3.11+
+- Google Gen AI Python SDK
+- `uv` for dependency and environment management
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `src/agentic_cinema/gemini.py` — reusable Gemini client wrapper
+- `src/agentic_cinema/scene.py` — cinematic scene-generation workflow
+- `src/agentic_cinema/prompts.py` — cinematic system prompt and default premise
+- `src/agentic_cinema/cli.py` — command-line entry point
+- `README.md` — setup and extension guide
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Credentials are read from environment variables at request time and never
+  stored in source code.
+- The model is configurable through `GEMINI_MODEL` so hackathon experiments do
+  not require code changes.
+- Google’s official `google-genai` client is used directly for Python support.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+The starter turns a short premise into a production-ready cinematic scene with
+story beats, dialogue, camera direction, lighting, and sound notes.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Keep the requested model name `gemini-1.5-flash` as the default for now.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- The configured API account currently returns `404` for
+  `gemini-1.5-flash`. The code preserves that requested model name and exposes
+  `GEMINI_MODEL` for switching only when the user chooses an available model.
 
 ## Pointers
 
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- See `README.md` for the first run and extension examples.
