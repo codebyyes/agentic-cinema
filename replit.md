@@ -9,7 +9,7 @@ API.
  - `uv run agentic-cinema "Your scene idea"` — generate a scene from a prompt
  - `uv run python -m compileall -q src` — compile-check the Python package
 
-Required secret: `GEMINI_API_KEY`.
+Required secret: `GOOGLE_API_KEY`.
 Optional environment variable: `GEMINI_MODEL` (defaults to
 `models/gemini-1.5-pro`).
 

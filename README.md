@@ -7,7 +7,7 @@ agents.
 
 ## 1. Run it
 
-The project uses the `GEMINI_API_KEY` Replit Secret. It is already configured
+The project uses the `GOOGLE_API_KEY` Replit Secret. It is already configured
 for this project, so you do not need to put the key in a file.
 
 ```bash

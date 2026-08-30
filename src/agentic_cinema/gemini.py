@@ -22,7 +22,8 @@ class GeminiClient:
     """Generate text with a configured Gemini model.
 
     The API key is read at call time from the environment so this class never
-    stores credentials in source code or in the repository.
+    stores credentials in source code or in the repository. GOOGLE_API_KEY is
+    preferred, with GEMINI_API_KEY retained as a compatibility fallback.
     """
 
     # Keep the model configurable so the hackathon can switch models without
@@ -50,10 +51,10 @@ class GeminiClient:
     ) -> str:
         """Send one prompt to Gemini and return the generated text."""
 
-        api_key = os.getenv("GEMINI_API_KEY")
+        api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise GeminiConfigurationError(
-                "GEMINI_API_KEY is missing. Add it as a Replit Secret or "
+                "GOOGLE_API_KEY is missing. Add it as a Replit Secret or "
                 "environment variable before running the project."
             )
 
