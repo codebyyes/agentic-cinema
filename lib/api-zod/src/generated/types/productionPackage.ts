@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { DialogueBlock } from './dialogueBlock';
 import type { ProductionScene } from './productionScene';
 
 export interface ProductionPackage {
@@ -12,7 +13,8 @@ export interface ProductionPackage {
   logline: string;
   emotionalCore: string;
   script: string;
-  dialogue: string;
+  /** Dialogue blocks formatted for screenplay presentation */
+  dialogue: DialogueBlock[];
   camera: string;
   lighting: string;
   music: string;

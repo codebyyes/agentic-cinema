@@ -207,7 +207,15 @@ function ProductionDossier({ packageResult }: { packageResult: ProductionPackage
 
         <article className="dossier-card dialogue-card" data-testid="card-dialogue">
           <div><div className="card-label"><Volume2 aria-hidden="true" /> The dialogue</div><h3>What is<br /><span>said.</span></h3></div>
-          <p className="dialogue-text" data-testid="text-dialogue">{packageResult.dialogue}</p>
+          <div className="screenplay-page" data-testid="text-dialogue" aria-label="Screenplay dialogue">
+            {packageResult.dialogue.map((block, index) => (
+              <div className="dialogue-block" key={`${block.character}-${index}`}>
+                <div className="dialogue-character">{block.character.toUpperCase()}</div>
+                {block.parenthetical && <div className="dialogue-parenthetical">({block.parenthetical})</div>}
+                <div className="dialogue-line">{block.line}</div>
+              </div>
+            ))}
+          </div>
         </article>
 
         <div className="scenes-heading"><h3>Scene map</h3><span>{packageResult.scenes.length} scenes / ready to shoot</span></div>
@@ -218,6 +226,11 @@ function ProductionDossier({ packageResult }: { packageResult: ProductionPackage
               <div>
                 <h4>{scene.heading}</h4>
                 <p className="scene-description">{scene.description}</p>
+                <div className="cinematography-specs" aria-label={`Cinematography specs for ${scene.heading}`}>
+                  <div className="cinematography-spec"><b>Shot</b><span>{scene.shotType}</span></div>
+                  <div className="cinematography-spec"><b>Lens</b><span>{scene.lens}</span></div>
+                  <div className="cinematography-spec"><b>Move</b><span>{scene.movement}</span></div>
+                </div>
                 <div className="beat-row">
                   <div className="beat"><b>Visual</b><span>{scene.visualBeat}</span></div>
                   <div className="beat"><b>Sound</b><span>{scene.soundBeat}</span></div>

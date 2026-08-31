@@ -682,15 +682,47 @@
   gap: clamp(28px, 6vw, 100px);
 }
 
-.dialogue-text {
-  white-space: pre-wrap;
-  margin: 0;
-  padding-left: 22px;
-  border-left: 2px solid hsl(var(--primary));
-  color: hsl(var(--foreground) / .78);
+.screenplay-page {
+  min-height: 320px;
+  margin: -8px 0 0;
+  padding: 26px clamp(18px, 5vw, 62px) 30px;
+  border: 1px solid hsl(var(--border));
+  background:
+    linear-gradient(90deg, hsl(var(--primary) / .08) 0 2px, transparent 2px 100%),
+    hsl(var(--background) / .38);
+  color: hsl(var(--foreground) / .82);
   font-family: var(--app-font-serif);
+}
+
+.dialogue-block {
+  margin: 0 auto 26px;
+  text-align: center;
+}
+
+.dialogue-block:last-child { margin-bottom: 0; }
+
+.dialogue-character {
+  color: hsl(var(--foreground));
+  font-family: var(--app-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .14em;
+}
+
+.dialogue-parenthetical {
+  margin-top: 5px;
+  color: hsl(var(--muted-foreground));
+  font-family: var(--app-font-mono);
+  font-size: 10px;
+  font-style: italic;
+  letter-spacing: .03em;
+}
+
+.dialogue-line {
+  max-width: 410px;
+  margin: 7px auto 0;
   font-size: 18px;
-  line-height: 1.5;
+  line-height: 1.48;
 }
 
 .scenes-heading {
@@ -755,6 +787,39 @@
   color: hsl(var(--muted-foreground));
   font-size: 13px;
   line-height: 1.55;
+}
+
+.cinematography-specs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 17px;
+}
+
+.cinematography-spec {
+  min-height: 58px;
+  padding: 10px 11px;
+  border: 1px solid hsl(var(--foreground) / .13);
+  background: hsl(var(--card) / .42);
+}
+
+.cinematography-spec b {
+  display: block;
+  margin-bottom: 7px;
+  color: hsl(var(--primary));
+  font-family: var(--app-font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.cinematography-spec span {
+  display: block;
+  color: hsl(var(--foreground) / .8);
+  font-family: var(--app-font-mono);
+  font-size: 10px;
+  line-height: 1.35;
 }
 
 .beat-row {
@@ -862,6 +927,7 @@
   .scenes-list { grid-column: 1; }
   .scenes-heading { margin-top: 6px; }
   .scene-card { grid-template-columns: 39px 1fr; }
+  .cinematography-specs { grid-template-columns: 1fr; }
   .footer { align-items: flex-start; flex-direction: column; gap: 9px; }
 }
 

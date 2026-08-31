@@ -18,12 +18,27 @@ export interface ProductionPackageInput {
   story: string;
 }
 
+export interface DialogueBlock {
+  /** Character name displayed above the dialogue line */
+  character: string;
+  /** Optional screenplay direction spoken beneath the character name */
+  parenthetical?: string;
+  /** The spoken dialogue */
+  line: string;
+}
+
 export interface ProductionScene {
   number: number;
   heading: string;
   description: string;
   visualBeat: string;
   soundBeat: string;
+  /** The framing, such as close-up, wide shot, or POV */
+  shotType: string;
+  /** Lens focal length, including the millimeter value */
+  lens: string;
+  /** Camera movement, such as dolly, handheld, crane, or drone */
+  movement: string;
 }
 
 export interface ProductionPackage {
@@ -31,7 +46,8 @@ export interface ProductionPackage {
   logline: string;
   emotionalCore: string;
   script: string;
-  dialogue: string;
+  /** Dialogue blocks formatted for screenplay presentation */
+  dialogue: DialogueBlock[];
   camera: string;
   lighting: string;
   music: string;

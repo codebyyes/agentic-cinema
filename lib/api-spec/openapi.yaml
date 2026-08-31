@@ -88,7 +88,10 @@ components:
         script:
           type: string
         dialogue:
-          type: string
+          type: array
+          description: Dialogue blocks formatted for screenplay presentation
+          items:
+            $ref: "#/components/schemas/DialogueBlock"
         camera:
           type: string
         lighting:
@@ -122,12 +125,39 @@ components:
           type: string
         soundBeat:
           type: string
+        shotType:
+          type: string
+          description: The framing, such as close-up, wide shot, or POV
+        lens:
+          type: string
+          description: Lens focal length, including the millimeter value
+        movement:
+          type: string
+          description: Camera movement, such as dolly, handheld, crane, or drone
       required:
         - number
         - heading
         - description
         - visualBeat
         - soundBeat
+        - shotType
+        - lens
+        - movement
+    DialogueBlock:
+      type: object
+      properties:
+        character:
+          type: string
+          description: Character name displayed above the dialogue line
+        parenthetical:
+          type: string
+          description: Optional screenplay direction spoken beneath the character name
+        line:
+          type: string
+          description: The spoken dialogue
+      required:
+        - character
+        - line
     ErrorResponse:
       type: object
       properties:

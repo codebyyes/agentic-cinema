@@ -20,7 +20,13 @@ Return ONLY valid JSON with exactly these keys:
   "logline": "string",
   "emotionalCore": "string",
   "script": "string",
-  "dialogue": "string",
+  "dialogue": [
+    {
+      "character": "string",
+      "parenthetical": "string",
+      "line": "string"
+    }
+  ],
   "camera": "string",
   "lighting": "string",
   "music": "string",
@@ -30,14 +36,25 @@ Return ONLY valid JSON with exactly these keys:
       "heading": "string",
       "description": "string",
       "visualBeat": "string",
-      "soundBeat": "string"
+      "soundBeat": "string",
+      "shotType": "Close-up",
+      "lens": "85mm",
+      "movement": "Slow dolly in"
     }
   ]
 }
 
 Write a complete but focused short-film package. The script should include
-action and scene headings. Dialogue should identify speakers. Camera, lighting,
-and music should be concrete enough to guide a shoot. Include 3-6 scenes.
+action and scene headings. Return dialogue as an array of screenplay blocks:
+each block must have a character name and a spoken line, with an optional
+parenthetical direction. Keep each character name concise and uppercase-ready.
+For every scene, specify a practical shot type such as close-up, medium shot,
+wide shot, overhead, or POV; a lens focal length with the millimeter value
+(for example 24mm, 35mm, 50mm, 85mm, or 135mm); and a camera movement. Every
+movement must use one of these production types: Dolly, Handheld, Crane, or
+Drone. You may add direction and speed, such as "Slow dolly in" or "Handheld
+drift"; never use "Static" as the movement value. Camera, lighting, and music
+should be concrete enough to guide a shoot. Include 3-6 scenes.
 Do not use markdown fences around the JSON.`;
 
 function extractJson(text: string): unknown {

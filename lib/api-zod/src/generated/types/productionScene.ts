@@ -12,4 +12,10 @@ export interface ProductionScene {
   description: string;
   visualBeat: string;
   soundBeat: string;
+  /** The framing, such as close-up, wide shot, or POV */
+  shotType: string;
+  /** Lens focal length, including the millimeter value */
+  lens: string;
+  /** Camera movement, such as dolly, handheld, crane, or drone */
+  movement: string;
 }

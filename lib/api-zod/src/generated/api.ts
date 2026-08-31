@@ -35,7 +35,11 @@ export const CreateProductionPackageResponse = zod.object({
   "logline": zod.string(),
   "emotionalCore": zod.string(),
   "script": zod.string(),
-  "dialogue": zod.string(),
+  "dialogue": zod.array(zod.object({
+  "character": zod.string().describe('Character name displayed above the dialogue line'),
+  "parenthetical": zod.string().optional().describe('Optional screenplay direction spoken beneath the character name'),
+  "line": zod.string().describe('The spoken dialogue')
+})).describe('Dialogue blocks formatted for screenplay presentation'),
   "camera": zod.string(),
   "lighting": zod.string(),
   "music": zod.string(),
@@ -44,7 +48,10 @@ export const CreateProductionPackageResponse = zod.object({
   "heading": zod.string(),
   "description": zod.string(),
   "visualBeat": zod.string(),
-  "soundBeat": zod.string()
+  "soundBeat": zod.string(),
+  "shotType": zod.string().describe('The framing, such as close-up, wide shot, or POV'),
+  "lens": zod.string().describe('Lens focal length, including the millimeter value'),
+  "movement": zod.string().describe('Camera movement, such as dolly, handheld, crane, or drone')
 }))
 })
 
