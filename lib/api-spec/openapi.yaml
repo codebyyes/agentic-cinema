@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: production
+    description: Film production package generation
 paths:
   /healthz:
     get:
@@ -24,6 +26,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /production-package:
+    post:
+      operationId: createProductionPackage
+      tags: [production]
+      summary: Generate a complete film production package
+      description: Analyzes a feeling or story premise and returns production-ready creative direction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductionPackageInput"
+      responses:
+        "200":
+          description: Generated production package
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductionPackage"
+        "400":
+          description: Invalid story input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Gemini generation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +66,73 @@ components:
           type: string
       required:
         - status
+    ProductionPackageInput:
+      type: object
+      properties:
+        story:
+          type: string
+          minLength: 10
+          maxLength: 12000
+          description: A feeling, memory, or story idea to transform into a film package
+      required:
+        - story
+    ProductionPackage:
+      type: object
+      properties:
+        title:
+          type: string
+        logline:
+          type: string
+        emotionalCore:
+          type: string
+        script:
+          type: string
+        dialogue:
+          type: string
+        camera:
+          type: string
+        lighting:
+          type: string
+        music:
+          type: string
+        scenes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductionScene"
+      required:
+        - title
+        - logline
+        - emotionalCore
+        - script
+        - dialogue
+        - camera
+        - lighting
+        - music
+        - scenes
+    ProductionScene:
+      type: object
+      properties:
+        number:
+          type: number
+        heading:
+          type: string
+        description:
+          type: string
+        visualBeat:
+          type: string
+        soundBeat:
+          type: string
+      required:
+        - number
+        - heading
+        - description
+        - visualBeat
+        - soundBeat
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
 

@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Agentic Cinema"
+description = "A cinematic AI studio that turns a user's feelings or story idea into a complete film production package with script, dialogue, visual direction, sound, and scene descriptions."
+version = "1.0.0"
+id = "artifacts/agentic-cinema"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21297
+
+[services.development]
+run = "pnpm --filter @workspace/agentic-cinema run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/agentic-cinema", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/agentic-cinema/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21297"
+BASE_PATH = "/"
