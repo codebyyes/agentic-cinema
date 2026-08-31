@@ -7,6 +7,7 @@ import {
 const router: IRouter = Router();
 
 const DEFAULT_MODEL = "gemini-3.6-flash";
+const GEMINI_REQUEST_TIMEOUT_MS = 120_000;
 
 const PRODUCTION_SYSTEM_PROMPT = `You are the creative director of Agentic Cinema.
 Transform the user's feelings, memory, or story idea into a complete film
@@ -45,7 +46,24 @@ function extractJson(text: string): unknown {
     .replace(/^```(?:json)?\s*/i, "")
     .replace(/\s*```$/i, "");
 
-  return JSON.parse(cleaned);
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const firstBrace = cleaned.indexOf("{");
+    const lastBrace = cleaned.lastIndexOf("}");
+    if (firstBrace === -1 || lastBrace <= firstBrace) {
+      throw new Error("Gemini did not return a JSON production package");
+    }
+    return JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
+  }
+}
+
+function getGeminiApiKey(): string | undefined {
+  const googleApiKey = process.env.GOOGLE_API_KEY?.trim();
+  if (googleApiKey) return googleApiKey;
+
+  const legacyApiKey = process.env.GEMINI_API_KEY?.trim();
+  return legacyApiKey || undefined;
 }
 
 router.post("/production-package", async (req, res): Promise<void> => {
@@ -59,7 +77,7 @@ router.post("/production-package", async (req, res): Promise<void> => {
     return;
   }
 
-  const apiKey = process.env.GOOGLE_API_KEY ?? process.env.GEMINI_API_KEY;
+  const apiKey = getGeminiApiKey();
   if (!apiKey) {
     req.log.error("Gemini API key is not configured");
     res.status(502).json({ error: "Gemini is not configured yet." });
@@ -73,31 +91,57 @@ router.post("/production-package", async (req, res): Promise<void> => {
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
   try {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: PRODUCTION_SYSTEM_PROMPT }],
-        },
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: parsedBody.data.story }],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.8,
-          maxOutputTokens: 8192,
-          responseMimeType: "application/json",
-        },
-      }),
-    });
+    let response: Response | undefined;
+    let providerError = "";
 
-    if (!response.ok) {
-      const providerError = await response.text();
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const controller = new AbortController();
+      const timeout = setTimeout(
+        () => controller.abort(),
+        GEMINI_REQUEST_TIMEOUT_MS,
+      );
+
+      try {
+        response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            system_instruction: {
+              parts: [{ text: PRODUCTION_SYSTEM_PROMPT }],
+            },
+            contents: [
+              {
+                role: "user",
+                parts: [{ text: parsedBody.data.story }],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.8,
+              maxOutputTokens: 8192,
+              responseMimeType: "application/json",
+            },
+          }),
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      if (response.ok) break;
+
+      providerError = await response.text();
+      if (response.status !== 503 || attempt === 1) break;
+
+      req.log.warn(
+        { status: response.status, attempt: attempt + 1 },
+        "Gemini temporarily unavailable; retrying once",
+      );
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
+    if (!response?.ok) {
       req.log.error(
-        { status: response.status, providerError },
+        { status: response?.status, providerError },
         "Gemini generation failed",
       );
       res

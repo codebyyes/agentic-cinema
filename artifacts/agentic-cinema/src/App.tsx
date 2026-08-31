@@ -30,6 +30,10 @@ function Home() {
   const [packageResult, setPackageResult] = useState<Awaited<ReturnType<typeof useCreateProductionPackage>>['data']>(undefined);
   const createPackage = useCreateProductionPackage();
   const health = useHealthCheck();
+  const generationError =
+    createPackage.error instanceof Error
+      ? createPackage.error.message
+      : 'The studio could not develop that package.';
 
   const submitStory = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -113,7 +117,7 @@ function Home() {
             <p className="helper-note" id="story-helper">Minimum 10 characters. The more personal the spark, the more specific the world.</p>
             {createPackage.isError && (
               <div className="error-callout" role="alert" data-testid="status-generation-error">
-                The studio could not develop that package. Check your connection and try again.
+                {generationError} Check your connection and try again.
                 <button type="button" data-testid="button-retry" onClick={() => void submitStory({ preventDefault: () => undefined } as FormEvent<HTMLFormElement>)}>Retry</button>
               </div>
             )}
