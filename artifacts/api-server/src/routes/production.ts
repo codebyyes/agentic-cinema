@@ -3,11 +3,13 @@ import {
   CreateProductionPackageBody,
   CreateProductionPackageResponse,
 } from "@workspace/api-zod";
+import { ai } from "@workspace/integrations-gemini-ai";
 
 const router: IRouter = Router();
 
-const DEFAULT_MODEL = "gemini-3.6-flash";
+const DEFAULT_MODEL = "gemini-3-flash-preview";
 const GEMINI_REQUEST_TIMEOUT_MS = 120_000;
+const TRANSIENT_RETRY_DELAY_MS = 500;
 
 const PRODUCTION_SYSTEM_PROMPT = `You are the creative director of Agentic Cinema.
 Transform the user's feelings, memory, or story idea into a complete film
@@ -75,20 +77,18 @@ function extractJson(text: string): unknown {
   }
 }
 
-function getGeminiApiKey(): string | undefined {
-  const googleApiKey = process.env.GOOGLE_API_KEY?.trim();
-  if (googleApiKey) return googleApiKey;
-
-  const legacyApiKey = process.env.GEMINI_API_KEY?.trim();
-  return legacyApiKey || undefined;
+function getErrorStatus(error: unknown): number | undefined {
+  if (!error || typeof error !== "object") return undefined;
+  const status = Reflect.get(error, "status");
+  return typeof status === "number" ? status : undefined;
 }
 
-function getProviderError(status: number | undefined, responseBody: string): string {
+function getProviderError(status: number | undefined, message: string): string {
   if (
     status === 429 &&
-    /prepayment credits are depleted|resource_exhausted/i.test(responseBody)
+    /credits|quota|resource_exhausted|rate limit/i.test(message)
   ) {
-    return "Gemini credits are depleted for the configured Google AI project. Add credits in Google AI Studio or update GOOGLE_API_KEY in Replit Secrets.";
+    return "Gemini is temporarily unavailable because the AI usage limit has been reached. Please try again later.";
   }
 
   if (status === 503) {
@@ -96,6 +96,43 @@ function getProviderError(status: number | undefined, responseBody: string): str
   }
 
   return "Gemini could not generate the production package.";
+}
+
+async function generateProductionPackage(story: string, model: string) {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return await Promise.race([
+        ai.models.generateContent({
+          model,
+          contents: [{ role: "user", parts: [{ text: story }] }],
+          config: {
+            systemInstruction: PRODUCTION_SYSTEM_PROMPT,
+            temperature: 0.8,
+            maxOutputTokens: 8192,
+            responseMimeType: "application/json",
+          },
+        }),
+        new Promise<never>((_, reject) => {
+          setTimeout(
+            () => reject(new Error("Gemini request timed out.")),
+            GEMINI_REQUEST_TIMEOUT_MS,
+          );
+        }),
+      ]);
+    } catch (error) {
+      lastError = error;
+      if (getErrorStatus(error) !== 503 || attempt === 1) throw error;
+      await new Promise((resolve) =>
+        setTimeout(resolve, TRANSIENT_RETRY_DELAY_MS),
+      );
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Gemini did not return a response.");
 }
 
 router.post("/production-package", async (req, res): Promise<void> => {
@@ -109,83 +146,14 @@ router.post("/production-package", async (req, res): Promise<void> => {
     return;
   }
 
-  const apiKey = getGeminiApiKey();
-  if (!apiKey) {
-    req.log.error("Gemini API key is not configured");
-    res.status(502).json({ error: "Gemini is not configured yet." });
-    return;
-  }
-
   const model = (process.env.GEMINI_MODEL ?? DEFAULT_MODEL).replace(
     /^models\//,
     "",
   );
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
   try {
-    let response: Response | undefined;
-    let providerError = "";
-
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      const controller = new AbortController();
-      const timeout = setTimeout(
-        () => controller.abort(),
-        GEMINI_REQUEST_TIMEOUT_MS,
-      );
-
-      try {
-        response = await fetch(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: controller.signal,
-          body: JSON.stringify({
-            system_instruction: {
-              parts: [{ text: PRODUCTION_SYSTEM_PROMPT }],
-            },
-            contents: [
-              {
-                role: "user",
-                parts: [{ text: parsedBody.data.story }],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.8,
-              maxOutputTokens: 8192,
-              responseMimeType: "application/json",
-            },
-          }),
-        });
-      } finally {
-        clearTimeout(timeout);
-      }
-
-      if (response.ok) break;
-
-      providerError = await response.text();
-      if (response.status !== 503 || attempt === 1) break;
-
-      req.log.warn(
-        { status: response.status, attempt: attempt + 1 },
-        "Gemini temporarily unavailable; retrying once",
-      );
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-
-    if (!response?.ok) {
-      req.log.error(
-        { status: response?.status, providerError },
-        "Gemini generation failed",
-      );
-      res
-        .status(response?.status === 429 ? 503 : 502)
-        .json({ error: getProviderError(response?.status, providerError) });
-      return;
-    }
-
-    const payload = (await response.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-    };
-    const generatedText = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+    const response = await generateProductionPackage(parsedBody.data.story, model);
+    const generatedText = response.text;
 
     if (!generatedText) {
       req.log.error("Gemini returned no generated text");
@@ -198,7 +166,19 @@ router.post("/production-package", async (req, res): Promise<void> => {
     );
     res.json(productionPackage);
   } catch (error) {
-    req.log.error({ err: error }, "Could not parse Gemini production package");
+    const providerStatus = getErrorStatus(error);
+    const providerMessage =
+      error instanceof Error ? error.message : String(error);
+    req.log.error(
+      { err: error, status: providerStatus },
+      "Could not prepare Gemini production package",
+    );
+    if (providerStatus === 429 || providerStatus === 503) {
+      res
+        .status(503)
+        .json({ error: getProviderError(providerStatus, providerMessage) });
+      return;
+    }
     res
       .status(502)
       .json({ error: "The production package could not be prepared." });

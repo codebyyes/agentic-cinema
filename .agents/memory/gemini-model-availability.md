@@ -11,4 +11,7 @@ while older model aliases may return 404 or quota restrictions at request time.
 
 **How to apply:** Preserve the user's requested model as the default when they
 specify one, verify it directly when practical, retry one transient 503, and
-document any provider-side availability limitation.
+document any provider-side availability limitation. Replit AI Integrations uses
+a separate supported-model list and Replit credit balance from direct Google AI
+keys; if switching transports is necessary, disclose both the billing change and
+the explicit model change rather than treating it as a silent fallback.
