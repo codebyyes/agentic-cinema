@@ -34,6 +34,7 @@ function Home() {
     createPackage.error instanceof Error
       ? createPackage.error.message
       : 'The studio could not develop that package.';
+  const canRetryGeneration = !/credits are depleted|billing/i.test(generationError);
 
   const submitStory = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -117,8 +118,13 @@ function Home() {
             <p className="helper-note" id="story-helper">Minimum 10 characters. The more personal the spark, the more specific the world.</p>
             {createPackage.isError && (
               <div className="error-callout" role="alert" data-testid="status-generation-error">
-                {generationError} Check your connection and try again.
-                <button type="button" data-testid="button-retry" onClick={() => void submitStory({ preventDefault: () => undefined } as FormEvent<HTMLFormElement>)}>Retry</button>
+                {generationError}
+                {canRetryGeneration
+                  ? ' Check your connection and try again.'
+                  : ' Generation will resume after the Google AI project has available credits.'}
+                {canRetryGeneration && (
+                  <button type="button" data-testid="button-retry" onClick={() => void submitStory({ preventDefault: () => undefined } as FormEvent<HTMLFormElement>)}>Retry</button>
+                )}
               </div>
             )}
           </form>

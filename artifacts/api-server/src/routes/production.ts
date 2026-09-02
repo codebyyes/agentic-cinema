@@ -83,6 +83,21 @@ function getGeminiApiKey(): string | undefined {
   return legacyApiKey || undefined;
 }
 
+function getProviderError(status: number | undefined, responseBody: string): string {
+  if (
+    status === 429 &&
+    /prepayment credits are depleted|resource_exhausted/i.test(responseBody)
+  ) {
+    return "Gemini credits are depleted for the configured Google AI project. Add credits in Google AI Studio or update GOOGLE_API_KEY in Replit Secrets.";
+  }
+
+  if (status === 503) {
+    return "Gemini is temporarily unavailable. Please try again in a moment.";
+  }
+
+  return "Gemini could not generate the production package.";
+}
+
 router.post("/production-package", async (req, res): Promise<void> => {
   const parsedBody = CreateProductionPackageBody.safeParse(req.body);
   if (!parsedBody.success) {
@@ -162,8 +177,8 @@ router.post("/production-package", async (req, res): Promise<void> => {
         "Gemini generation failed",
       );
       res
-        .status(502)
-        .json({ error: "Gemini could not generate the production package." });
+        .status(response?.status === 429 ? 503 : 502)
+        .json({ error: getProviderError(response?.status, providerError) });
       return;
     }
 
