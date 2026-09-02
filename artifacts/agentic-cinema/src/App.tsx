@@ -13,7 +13,9 @@ import {
 import {
   ArrowUpRight,
   Camera,
+  Check,
   Clapperboard,
+  Copy,
   Film,
   Lightbulb,
   LoaderCircle,
@@ -374,6 +376,14 @@ function SceneCard({
 }) {
   const sceneImage = useCreateSceneImage();
   const { mutate } = sceneImage;
+  const [isCopied, setIsCopied] = useState(false);
+
+  const scenePrompt = [
+    `${scene.shotType} of ${trimPromptClause(scene.visualBeat)}`,
+    `shot on ${scene.lens}`,
+    lowerPromptClause(scene.movement),
+    `with ${lowerPromptClause(scene.soundBeat)}`,
+  ].join(', ') + '.';
 
   const generateImage = () => {
     const imageVisualBeat = [
@@ -394,6 +404,29 @@ function SceneCard({
     });
   };
 
+  const copyScenePrompt = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(scenePrompt);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = scenePrompt;
+        textArea.setAttribute('readonly', '');
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        const didCopy = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        if (!didCopy) throw new Error('Copy failed');
+      }
+      setIsCopied(true);
+      window.setTimeout(() => setIsCopied(false), 1800);
+    } catch {
+      setIsCopied(false);
+    }
+  };
+
   useEffect(() => {
     generateImage();
     // The scene values are immutable within a generated production package.
@@ -410,6 +443,7 @@ function SceneCard({
       <span className="scene-number">{String(scene.number).padStart(2, '0')}</span>
       <div className="scene-card-body">
         <div className="scene-image-frame" aria-live="polite">
+          <span className="visual-reference-label">Visual Reference</span>
           {sceneImage.data ? (
             <img
               src={`data:${sceneImage.data.mimeType};base64,${sceneImage.data.imageData}`}
@@ -443,9 +477,34 @@ function SceneCard({
           <div className="beat"><b>Visual</b><span>{scene.visualBeat}</span></div>
           <div className="beat"><b>Sound</b><span>{scene.soundBeat}</span></div>
         </div>
+        <div className="scene-prompt">
+          <div className="scene-prompt-header">
+            <span className="scene-prompt-label">Copy as prompt</span>
+            <button
+              type="button"
+              className="copy-prompt-button"
+              onClick={copyScenePrompt}
+              aria-label={`Copy prompt for scene ${String(scene.number).padStart(2, '0')}`}
+              title={isCopied ? 'Copied' : 'Copy as prompt'}
+            >
+              {isCopied ? <Check size={13} aria-hidden="true" /> : <Copy size={13} aria-hidden="true" />}
+              <span>{isCopied ? 'Copied' : 'Copy'}</span>
+            </button>
+          </div>
+          <p>{scenePrompt}</p>
+        </div>
       </div>
     </article>
   );
+}
+
+function trimPromptClause(value: string): string {
+  return value.trim().replace(/[.!?]+$/, '');
+}
+
+function lowerPromptClause(value: string): string {
+  const clause = trimPromptClause(value);
+  return clause ? `${clause.charAt(0).toLowerCase()}${clause.slice(1)}` : clause;
 }
 
 function Router() {
