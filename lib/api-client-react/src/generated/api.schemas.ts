@@ -54,6 +54,36 @@ export interface ProductionPackage {
   scenes: ProductionScene[];
 }
 
+export interface SceneImageInput {
+  /**
+     * The visual action or composition to depict
+     * @minLength 3
+     * @maxLength 2000
+     */
+  visualBeat: string;
+  /**
+     * The desired framing, such as wide shot or close-up
+     * @minLength 2
+     * @maxLength 120
+     */
+  shotType: string;
+  /**
+     * The desired focal length, such as 35mm
+     * @minLength 2
+     * @maxLength 80
+     */
+  lens: string;
+}
+
+export interface SceneImage {
+  /** Base64-encoded generated image data */
+  imageData: string;
+  /** MIME type of the generated image */
+  mimeType: string;
+  /** Image generation model used for this request */
+  model: string;
+}
+
 export interface ErrorResponse {
   error: string;
 }

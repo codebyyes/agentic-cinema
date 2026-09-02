@@ -57,6 +57,43 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /scene-image:
+    post:
+      operationId: createSceneImage
+      tags: [production]
+      summary: Generate a cinematic image for one production scene
+      description: Uses the scene's visual, shot, and lens direction to generate a cinematic still.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SceneImageInput"
+      responses:
+        "200":
+          description: Generated scene image
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SceneImage"
+        "400":
+          description: Invalid scene input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Image generation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Image generation temporarily unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -143,6 +180,44 @@ components:
         - shotType
         - lens
         - movement
+    SceneImageInput:
+      type: object
+      properties:
+        visualBeat:
+          type: string
+          minLength: 3
+          maxLength: 2000
+          description: The visual action or composition to depict
+        shotType:
+          type: string
+          minLength: 2
+          maxLength: 120
+          description: The desired framing, such as wide shot or close-up
+        lens:
+          type: string
+          minLength: 2
+          maxLength: 80
+          description: The desired focal length, such as 35mm
+      required:
+        - visualBeat
+        - shotType
+        - lens
+    SceneImage:
+      type: object
+      properties:
+        imageData:
+          type: string
+          description: Base64-encoded generated image data
+        mimeType:
+          type: string
+          description: MIME type of the generated image
+        model:
+          type: string
+          description: Image generation model used for this request
+      required:
+        - imageData
+        - mimeType
+        - model
     DialogueBlock:
       type: object
       properties:

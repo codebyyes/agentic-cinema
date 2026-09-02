@@ -56,3 +56,31 @@ export const CreateProductionPackageResponse = zod.object({
 })
 
 
+/**
+ * Uses the scene's visual, shot, and lens direction to generate a cinematic still.
+ * @summary Generate a cinematic image for one production scene
+ */
+export const createSceneImageBodyVisualBeatMin = 3;
+export const createSceneImageBodyVisualBeatMax = 2000;
+
+export const createSceneImageBodyShotTypeMin = 2;
+export const createSceneImageBodyShotTypeMax = 120;
+
+export const createSceneImageBodyLensMin = 2;
+export const createSceneImageBodyLensMax = 80;
+
+
+
+export const CreateSceneImageBody = zod.object({
+  "visualBeat": zod.string().min(createSceneImageBodyVisualBeatMin).max(createSceneImageBodyVisualBeatMax).describe('The visual action or composition to depict'),
+  "shotType": zod.string().min(createSceneImageBodyShotTypeMin).max(createSceneImageBodyShotTypeMax).describe('The desired framing, such as wide shot or close-up'),
+  "lens": zod.string().min(createSceneImageBodyLensMin).max(createSceneImageBodyLensMax).describe('The desired focal length, such as 35mm')
+})
+
+export const CreateSceneImageResponse = zod.object({
+  "imageData": zod.string().describe('Base64-encoded generated image data'),
+  "mimeType": zod.string().describe('MIME type of the generated image'),
+  "model": zod.string().describe('Image generation model used for this request')
+})
+
+

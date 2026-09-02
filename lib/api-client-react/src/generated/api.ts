@@ -23,7 +23,9 @@ import type {
   ErrorResponse,
   HealthStatus,
   ProductionPackage,
-  ProductionPackageInput
+  ProductionPackageInput,
+  SceneImage,
+  SceneImageInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -201,5 +203,77 @@ export const useCreateProductionPackage = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getCreateProductionPackageMutationOptions(options));
+    }
+
+export const getCreateSceneImageUrl = () => {
+
+
+
+
+  return `/api/scene-image`
+}
+
+/**
+ * Uses the scene's visual, shot, and lens direction to generate a cinematic still.
+ * @summary Generate a cinematic image for one production scene
+ */
+export const createSceneImage = async (sceneImageInput: SceneImageInput, options?: Parameters<typeof customFetch>[1]): Promise<SceneImage> => {
+
+  return customFetch<SceneImage>(getCreateSceneImageUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(sceneImageInput)
+  }
+);}
+
+
+
+
+
+export const getCreateSceneImageMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSceneImage>>, TError,{data: BodyType<SceneImageInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSceneImage>>, TError,{data: BodyType<SceneImageInput>}, TContext> => {
+
+const mutationKey = ['createSceneImage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSceneImage>>, {data: BodyType<SceneImageInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createSceneImage(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSceneImageMutationResult = NonNullable<Awaited<ReturnType<typeof createSceneImage>>>
+    export type CreateSceneImageMutationBody = BodyType<SceneImageInput>
+    export type CreateSceneImageMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Generate a cinematic image for one production scene
+ */
+export const useCreateSceneImage = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSceneImage>>, TError,{data: BodyType<SceneImageInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSceneImage>>,
+        TError,
+        {data: BodyType<SceneImageInput>},
+        TContext
+      > => {
+      return useMutation(getCreateSceneImageMutationOptions(options));
     }
 

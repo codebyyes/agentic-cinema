@@ -12,3 +12,5 @@ export * from './healthStatus';
 export * from './productionPackage';
 export * from './productionPackageInput';
 export * from './productionScene';
+export * from './sceneImage';
+export * from './sceneImageInput';

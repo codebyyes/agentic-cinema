@@ -1,10 +1,15 @@
-import { type FormEvent, type ReactNode, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
-import { useCreateProductionPackage, useHealthCheck } from '@workspace/api-client-react';
+import {
+  type ProductionScene,
+  useCreateProductionPackage,
+  useCreateSceneImage,
+  useHealthCheck,
+} from '@workspace/api-client-react';
 import {
   ArrowUpRight,
   Camera,
@@ -13,6 +18,7 @@ import {
   Lightbulb,
   LoaderCircle,
   Music2,
+  RefreshCw,
   RotateCcw,
   Volume2,
 } from 'lucide-react';
@@ -227,26 +233,79 @@ function ProductionDossier({ packageResult }: { packageResult: ProductionPackage
         <div className="scenes-heading"><h3>Scene map</h3><span>{packageResult.scenes.length} scenes / ready to shoot</span></div>
         <div className="scenes-list">
           {packageResult.scenes.map((scene) => (
-            <article className="scene-card" key={`${scene.number}-${scene.heading}`} data-testid={`card-scene-${scene.number}`}>
-              <span className="scene-number">{String(scene.number).padStart(2, '0')}</span>
-              <div>
-                <h4>{scene.heading}</h4>
-                <p className="scene-description">{scene.description}</p>
-                <div className="cinematography-specs" aria-label={`Cinematography specs for ${scene.heading}`}>
-                  <div className="cinematography-spec"><b>Shot</b><span>{scene.shotType}</span></div>
-                  <div className="cinematography-spec"><b>Lens</b><span>{scene.lens}</span></div>
-                  <div className="cinematography-spec"><b>Move</b><span>{scene.movement}</span></div>
-                </div>
-                <div className="beat-row">
-                  <div className="beat"><b>Visual</b><span>{scene.visualBeat}</span></div>
-                  <div className="beat"><b>Sound</b><span>{scene.soundBeat}</span></div>
-                </div>
-              </div>
-            </article>
+            <SceneCard scene={scene} key={`${scene.number}-${scene.heading}`} />
           ))}
         </div>
       </div>
     </section>
+  );
+}
+
+function SceneCard({ scene }: { scene: ProductionScene }) {
+  const sceneImage = useCreateSceneImage();
+  const { mutate } = sceneImage;
+
+  const generateImage = () => {
+    mutate({
+      data: {
+        visualBeat: scene.visualBeat,
+        shotType: scene.shotType,
+        lens: scene.lens,
+      },
+    });
+  };
+
+  useEffect(() => {
+    generateImage();
+    // The scene values are immutable within a generated production package.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scene.visualBeat, scene.shotType, scene.lens]);
+
+  const imageError =
+    sceneImage.error instanceof Error
+      ? sceneImage.error.message.replace(/^HTTP \d+ [^:]+:\s*/, '')
+      : 'This scene image could not be generated.';
+
+  return (
+    <article className="scene-card" data-testid={`card-scene-${scene.number}`}>
+      <span className="scene-number">{String(scene.number).padStart(2, '0')}</span>
+      <div className="scene-card-body">
+        <div className="scene-image-frame" aria-live="polite">
+          {sceneImage.data ? (
+            <img
+              src={`data:${sceneImage.data.mimeType};base64,${sceneImage.data.imageData}`}
+              alt={`${scene.heading}: ${scene.visualBeat}`}
+              data-testid={`image-scene-${scene.number}`}
+            />
+          ) : sceneImage.isError ? (
+            <div className="scene-image-error" role="alert" data-testid={`status-scene-image-error-${scene.number}`}>
+              <Camera aria-hidden="true" />
+              <p>{imageError}</p>
+              <button type="button" onClick={generateImage} disabled={sceneImage.isPending}>
+                <RefreshCw size={13} aria-hidden="true" />
+                Retry image
+              </button>
+            </div>
+          ) : (
+            <div className="scene-image-loading" data-testid={`status-scene-image-loading-${scene.number}`}>
+              <div className="scene-image-skeleton" />
+              <span><LoaderCircle size={14} className="animate-spin" aria-hidden="true" /> Rendering scene {String(scene.number).padStart(2, '0')}</span>
+            </div>
+          )}
+        </div>
+        <h4>{scene.heading}</h4>
+        <p className="scene-description">{scene.description}</p>
+        <div className="cinematography-specs" aria-label={`Cinematography specs for ${scene.heading}`}>
+          <div className="cinematography-spec"><b>Shot</b><span>{scene.shotType}</span></div>
+          <div className="cinematography-spec"><b>Lens</b><span>{scene.lens}</span></div>
+          <div className="cinematography-spec"><b>Move</b><span>{scene.movement}</span></div>
+        </div>
+        <div className="beat-row">
+          <div className="beat"><b>Visual</b><span>{scene.visualBeat}</span></div>
+          <div className="beat"><b>Sound</b><span>{scene.soundBeat}</span></div>
+        </div>
+      </div>
+    </article>
   );
 }
 
