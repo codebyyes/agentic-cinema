@@ -233,7 +233,11 @@ function ProductionDossier({ packageResult }: { packageResult: ProductionPackage
         <div className="scenes-heading"><h3>Scene map</h3><span>{packageResult.scenes.length} scenes / ready to shoot</span></div>
         <div className="scenes-list">
           {packageResult.scenes.map((scene) => (
-            <SceneCard scene={scene} key={`${scene.number}-${scene.heading}`} />
+            <SceneCard
+              scene={scene}
+              emotionalCore={packageResult.emotionalCore}
+              key={`${scene.number}-${scene.heading}`}
+            />
           ))}
         </div>
       </div>
@@ -241,14 +245,25 @@ function ProductionDossier({ packageResult }: { packageResult: ProductionPackage
   );
 }
 
-function SceneCard({ scene }: { scene: ProductionScene }) {
+function SceneCard({
+  scene,
+  emotionalCore,
+}: {
+  scene: ProductionScene;
+  emotionalCore: string;
+}) {
   const sceneImage = useCreateSceneImage();
   const { mutate } = sceneImage;
 
   const generateImage = () => {
+    const imageVisualBeat = [
+      `Visual beat: ${scene.visualBeat}`,
+      `Overall story emotional core: ${emotionalCore}`,
+    ].join('\n').slice(0, 2000);
+
     mutate({
       data: {
-        visualBeat: scene.visualBeat,
+        visualBeat: imageVisualBeat,
         shotType: scene.shotType,
         lens: scene.lens,
       },
@@ -259,7 +274,7 @@ function SceneCard({ scene }: { scene: ProductionScene }) {
     generateImage();
     // The scene values are immutable within a generated production package.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scene.visualBeat, scene.shotType, scene.lens]);
+  }, [scene.visualBeat, scene.shotType, scene.lens, emotionalCore]);
 
   const imageError =
     sceneImage.error instanceof Error
