@@ -346,6 +346,8 @@ function ProductionDossier({
               characterContext={buildCharacterContext(packageResult, scene, sourceStory)}
               environmentContext={buildEnvironmentContext(scene, sourceStory)}
               emotionalCore={packageResult.emotionalCore}
+              cameraDirection={packageResult.camera}
+              lightingDirection={packageResult.lighting}
               key={`${scene.number}-${scene.heading}`}
             />
           ))}
@@ -360,11 +362,15 @@ function SceneCard({
   characterContext,
   environmentContext,
   emotionalCore,
+  cameraDirection,
+  lightingDirection,
 }: {
   scene: ProductionScene;
   characterContext: string;
   environmentContext: string;
   emotionalCore: string;
+  cameraDirection: string;
+  lightingDirection: string;
 }) {
   const sceneImage = useCreateSceneImage();
   const { mutate } = sceneImage;
@@ -375,6 +381,8 @@ function SceneCard({
       `Overall story emotional core: ${truncatePromptContext(emotionalCore, 350)}`,
       `Character continuity: ${truncatePromptContext(characterContext, 500)}`,
       `Environment continuity: ${truncatePromptContext(environmentContext, 350)}`,
+      `Overall camera direction and visual grammar: ${truncatePromptContext(cameraDirection, 500)}`,
+      `Overall lighting direction and color palette: ${truncatePromptContext(lightingDirection, 500)}`,
     ].join('\n');
 
     mutate({
@@ -390,7 +398,7 @@ function SceneCard({
     generateImage();
     // The scene values are immutable within a generated production package.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scene.visualBeat, scene.shotType, scene.lens, emotionalCore, characterContext, environmentContext]);
+  }, [scene.visualBeat, scene.shotType, scene.lens, emotionalCore, characterContext, environmentContext, cameraDirection, lightingDirection]);
 
   const imageError =
     sceneImage.error instanceof Error
