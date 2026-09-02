@@ -38,7 +38,7 @@ function buildSceneImagePrompt(input: {
     "Create a cinematic film still for a live-action short film.",
     `Framing and camera: ${input.shotType}, photographed with a ${input.lens} lens.`,
     `Scene direction and emotional context: ${input.visualBeat}`,
-    "Treat the overall story emotional core as the intended emotional tone of the image. Do not invent an opposing mood; depict the visible action and emotional context together.",
+    "Treat the emotional core, character continuity, and environment continuity details as anchors established by the film package. Do not invent an opposing mood, change character identities, or remove stated weather and setting details.",
     "Naturalistic production design, emotionally specific composition, atmospheric practical lighting, realistic texture, subtle film grain, and a coherent cinematic color grade.",
     "No text, captions, subtitles, borders, watermarks, logos, or interface elements.",
   ].join("\n");

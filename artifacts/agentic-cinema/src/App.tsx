@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
@@ -32,8 +32,21 @@ import {
 const queryClient = new QueryClient();
 
 function Home() {
+  const [storySession, setStorySession] = useState(0);
+
+  return (
+    <HomeSession
+      key={storySession}
+      onStartNewStory={() => setStorySession((current) => current + 1)}
+    />
+  );
+}
+
+function HomeSession({ onStartNewStory }: { onStartNewStory: () => void }) {
   const [story, setStory] = useState('');
+  const [sourceStory, setSourceStory] = useState('');
   const [packageResult, setPackageResult] = useState<Awaited<ReturnType<typeof useCreateProductionPackage>>['data']>(undefined);
+  const generationVersion = useRef(0);
   const createPackage = useCreateProductionPackage();
   const health = useHealthCheck();
   const generationError =
@@ -46,13 +59,29 @@ function Home() {
     event.preventDefault();
     const trimmedStory = story.trim();
     if (trimmedStory.length < 10 || createPackage.isPending) return;
+    const requestVersion = ++generationVersion.current;
     try {
       const result = await createPackage.mutateAsync({ data: { story: trimmedStory } });
+      if (requestVersion !== generationVersion.current) return;
+      setSourceStory(trimmedStory);
       setPackageResult(result);
-      window.setTimeout(() => document.getElementById('production-dossier')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+      window.setTimeout(() => {
+        if (requestVersion === generationVersion.current) {
+          document.getElementById('production-dossier')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 80);
     } catch {
       // The mutation error is rendered directly below the composer.
     }
+  };
+
+  const startNewStory = () => {
+    generationVersion.current += 1;
+    createPackage.reset();
+    onStartNewStory();
+    window.requestAnimationFrame(() => {
+      document.getElementById('story-input')?.focus();
+    });
   };
 
   const usePrompt = (prompt: string) => {
@@ -108,18 +137,24 @@ function Home() {
             />
             <div className="composer-bottom">
               <span className="character-count" data-testid="text-character-count">{story.length.toLocaleString()} / 12,000</span>
-              <button className="generate-button" type="submit" data-testid="button-generate" disabled={story.trim().length < 10 || createPackage.isPending}>
-                {createPackage.isPending ? (
-                  <>
-                    <LoaderCircle size={16} className="animate-spin" aria-hidden="true" />
-                    Developing your film
-                  </>
-                ) : (
-                  <>
-                    Develop the package <ArrowUpRight size={16} aria-hidden="true" />
-                  </>
-                )}
-              </button>
+              <div className="composer-actions">
+                <button className="new-story-button" type="button" data-testid="button-new-story" onClick={startNewStory}>
+                  <RotateCcw size={14} aria-hidden="true" />
+                  New Story
+                </button>
+                <button className="generate-button" type="submit" data-testid="button-generate" disabled={story.trim().length < 10 || createPackage.isPending}>
+                  {createPackage.isPending ? (
+                    <>
+                      <LoaderCircle size={16} className="animate-spin" aria-hidden="true" />
+                      Developing your film
+                    </>
+                  ) : (
+                    <>
+                      Develop the package <ArrowUpRight size={16} aria-hidden="true" />
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
             <p className="helper-note" id="story-helper">Minimum 10 characters. The more personal the spark, the more specific the world.</p>
             {createPackage.isError && (
@@ -167,7 +202,7 @@ function Home() {
         </section>
       )}
 
-      {packageResult && <ProductionDossier packageResult={packageResult} />}
+      {packageResult && <ProductionDossier packageResult={packageResult} sourceStory={sourceStory} />}
 
       <footer className="footer">
         <span>Agentic Cinema <span className="footer-mark">/</span> Make the inner world visible.</span>
@@ -179,7 +214,80 @@ function Home() {
 
 type ProductionPackageResult = NonNullable<Awaited<ReturnType<typeof useCreateProductionPackage>>['data']>;
 
-function ProductionDossier({ packageResult }: { packageResult: ProductionPackageResult }) {
+const CHARACTER_CUE_PATTERN =
+  /(?:\b(?:man|men|male|woman|women|female|boy|boys|girl|girls|he|him|his|she|her|hers|mother|father|mom|dad|son|daughter|brother|sister|husband|wife|uncle|aunt|grandfather|grandmother|friend|friends|child|children)\b|男性|男人|男孩|男生|女性|女人|女孩|女生|他|她|母親|媽媽|父親|爸爸|兒子|女兒|兄弟|哥哥|弟弟|姐妹|姐姐|妹妹|丈夫|妻子|朋友|小孩|孩子)/i;
+const ENVIRONMENT_CUE_PATTERN =
+  /(?:\b(?:rain|raining|rainstorm|drizzle|snow|snowing|fog|mist|wind|windy|storm|sunlight|sunny|daylight|night|dawn|dusk|morning|afternoon|evening|indoor|inside|outdoor|outside|street|road|alley|kitchen|bedroom|living room|house|home|apartment|office|school|station|car|train|beach|ocean|river|forest|garden|park|rooftop|warehouse|hospital|church|bar|restaurant)\b|雨|下雨|雨天|暴雨|毛毛雨|雪|下雪|霧|風|暴風雨|陽光|晴天|夜晚|黎明|黃昏|早晨|下午|晚上|室內|室外|街道|道路|巷子|廚房|臥室|客廳|房子|家中|公寓|辦公室|學校|車站|汽車|火車|海灘|海洋|河|森林|花園|公園|屋頂|倉庫|醫院|教堂|酒吧|餐廳)/i;
+const ENVIRONMENT_KEYWORD_PATTERN =
+  /(?:\b(?:rain|raining|rainstorm|drizzle|snow|snowing|fog|mist|wind|windy|storm|sunlight|sunny|daylight|night|dawn|dusk|morning|afternoon|evening|indoor|inside|outdoor|outside|street|road|alley|kitchen|bedroom|living room|house|home|apartment|office|school|station|car|train|beach|ocean|river|forest|garden|park|rooftop|warehouse|hospital|church|bar|restaurant)\b|雨|下雨|雨天|暴雨|毛毛雨|雪|下雪|霧|風|暴風雨|陽光|晴天|夜晚|黎明|黃昏|早晨|下午|晚上|室內|室外|街道|道路|巷子|廚房|臥室|客廳|房子|家中|公寓|辦公室|學校|車站|汽車|火車|海灘|海洋|河|森林|花園|公園|屋頂|倉庫|醫院|教堂|酒吧|餐廳)/gi;
+
+function splitContextSentences(value: string): string[] {
+  return (value.match(/[^.!?。！？\n]+[.!?。！？]?/g) ?? [])
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+}
+
+function truncatePromptContext(value: string, maxLength: number): string {
+  const trimmed = value.trim();
+  if (trimmed.length <= maxLength) return trimmed;
+  return `${trimmed.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+}
+
+function buildCharacterContext(
+  packageResult: ProductionPackageResult,
+  scene: ProductionScene,
+  sourceStory: string,
+): string {
+  const characterNames = [...new Set(
+    packageResult.dialogue
+      .map((block) => block.character.trim())
+      .filter(Boolean),
+  )];
+  const sceneText = `${scene.heading} ${scene.description} ${scene.visualBeat}`.toLowerCase();
+  const sceneCharacterNames = characterNames.filter((name) =>
+    sceneText.includes(name.toLowerCase()),
+  );
+  const relevantNames = sceneCharacterNames.length > 0 ? sceneCharacterNames : characterNames;
+  const premiseCues = splitContextSentences(sourceStory)
+    .filter((sentence) => CHARACTER_CUE_PATTERN.test(sentence))
+    .slice(0, 2);
+  const scriptCues = splitContextSentences(packageResult.script)
+    .filter((line) => line.length > 0 && CHARACTER_CUE_PATTERN.test(line))
+    .filter((line) =>
+      sceneCharacterNames.length === 0 ||
+      sceneCharacterNames.some((name) => line.toLowerCase().includes(name.toLowerCase())),
+    )
+    .slice(0, 3);
+
+  const namedCharacters = relevantNames.length
+    ? `Named characters: ${relevantNames.join(', ')}.`
+    : '';
+  return [namedCharacters, ...premiseCues, ...scriptCues].filter(Boolean).join(' ');
+}
+
+function buildEnvironmentContext(scene: ProductionScene, sourceStory: string): string {
+  const sceneSource = `${scene.heading}. ${scene.description}`;
+  const environmentSentences = splitContextSentences(sceneSource)
+    .filter((sentence) => sentence.length > 0 && ENVIRONMENT_CUE_PATTERN.test(sentence));
+  const premiseEnvironment = splitContextSentences(sourceStory)
+    .filter((sentence) => ENVIRONMENT_CUE_PATTERN.test(sentence))
+    .slice(0, 2);
+
+  if (environmentSentences.length > 0 || premiseEnvironment.length > 0) {
+    return [...premiseEnvironment, ...environmentSentences].join(' ');
+  }
+
+  const keywords = sceneSource.match(ENVIRONMENT_KEYWORD_PATTERN);
+  return keywords ? [...new Set(keywords.map((keyword) => keyword.toLowerCase()))].join(', ') : scene.heading;
+}
+
+function ProductionDossier({
+  packageResult,
+  sourceStory,
+}: {
+  packageResult: ProductionPackageResult;
+  sourceStory: string;
+}) {
   const craft = [
     { label: 'Camera', icon: Camera, text: packageResult.camera },
     { label: 'Lighting', icon: Lightbulb, text: packageResult.lighting },
@@ -235,6 +343,8 @@ function ProductionDossier({ packageResult }: { packageResult: ProductionPackage
           {packageResult.scenes.map((scene) => (
             <SceneCard
               scene={scene}
+              characterContext={buildCharacterContext(packageResult, scene, sourceStory)}
+              environmentContext={buildEnvironmentContext(scene, sourceStory)}
               emotionalCore={packageResult.emotionalCore}
               key={`${scene.number}-${scene.heading}`}
             />
@@ -247,9 +357,13 @@ function ProductionDossier({ packageResult }: { packageResult: ProductionPackage
 
 function SceneCard({
   scene,
+  characterContext,
+  environmentContext,
   emotionalCore,
 }: {
   scene: ProductionScene;
+  characterContext: string;
+  environmentContext: string;
   emotionalCore: string;
 }) {
   const sceneImage = useCreateSceneImage();
@@ -257,9 +371,11 @@ function SceneCard({
 
   const generateImage = () => {
     const imageVisualBeat = [
-      `Visual beat: ${scene.visualBeat}`,
-      `Overall story emotional core: ${emotionalCore}`,
-    ].join('\n').slice(0, 2000);
+      `Visual beat: ${truncatePromptContext(scene.visualBeat, 650)}`,
+      `Overall story emotional core: ${truncatePromptContext(emotionalCore, 350)}`,
+      `Character continuity: ${truncatePromptContext(characterContext, 500)}`,
+      `Environment continuity: ${truncatePromptContext(environmentContext, 350)}`,
+    ].join('\n');
 
     mutate({
       data: {
@@ -274,7 +390,7 @@ function SceneCard({
     generateImage();
     // The scene values are immutable within a generated production package.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scene.visualBeat, scene.shotType, scene.lens, emotionalCore]);
+  }, [scene.visualBeat, scene.shotType, scene.lens, emotionalCore, characterContext, environmentContext]);
 
   const imageError =
     sceneImage.error instanceof Error
