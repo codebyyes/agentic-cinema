@@ -1,65 +1,94 @@
 # Agentic Cinema
 
-A small Python starter for the Agentic Cinema hackathon. It provides a reusable
-Gemini client and a first cinematic scene-generation workflow that you can
-extend into story planning, shot design, dialogue, or production coordination
-agents.
+> Submitted to the **Agentic Cinema: The Blockbuster Hackathon** (Google Cloud × Replit track) as **SPARK Cinema**.
 
-## 1. Run it
+**Tell us the story. We'll direct the film.**
 
-The project uses the `GOOGLE_API_KEY` Replit Secret. It is already configured
-for this project, so you do not need to put the key in a file.
+Agentic Cinema turns a single human spark — a memory, a feeling, an unresolved moment — into a complete, shootable film production package. Instead of asking users to speak the language of cameras and lighting, it lets them speak naturally, and uses Google's Gemini models to translate that story into cinematic language: a script, a scene-by-scene shot list, and a generated image for every scene.
+
+**Live app:** https://agentic-cinema--yes7707.replit.app
+
+---
+
+## What It Does
+
+Given a short, plain-language description of a story or feeling, Agentic Cinema generates:
+
+- A title, logline, and emotional core
+- A full script with dialogue
+- A dynamically-sized scene breakdown (3–6 scenes, determined by Gemini based on the story's own complexity — not hardcoded)
+- For each scene: shot type, lens, camera movement, lighting direction, and sound design
+- A corresponding AI-generated image for every scene, grounded in that scene's specific shot type, lens, and visual description
+
+The number of scenes and the content of each one is entirely determined by Gemini's interpretation of the input story — the application does not impose a fixed structure.
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React |
+| Backend | Node.js API server |
+| AI / narrative + scene reasoning | Google Gemini API |
+| AI / scene image generation | Google Gemini image model (`gemini-3.1-flash-image`) |
+| Development | Built end-to-end with **Replit Agent** |
+| Hosting / deployment | **Replit** (`replit.app` domain) |
+
+Both the Gemini API and Replit are called and used directly at runtime — the narrative/scene generation and every scene image are produced by live Gemini API calls from the app's backend, and the app is developed, hosted, and deployed entirely on Replit.
+
+## Architecture
+
+1. User submits a short story/feeling via the input form.
+2. The backend sends the input to Gemini, which returns a structured production package (title, logline, emotional core, script, and a `scenes[]` array with `shotType`, `lens`, `movement`, `visualBeat`, `soundBeat` for each scene).
+3. The frontend renders one `SceneCard` per item in `scenes[]`.
+4. Each `SceneCard` independently calls `/api/scene-image`, which sends that scene's `shotType`, `lens`, and `visualBeat` to Gemini's image model and returns a generated image.
+5. Each scene card handles its own loading, success, and error/retry state — a failed image generation on one scene never blocks or breaks the rest of the production package.
+
+## Running Locally
+
+This is a monorepo (managed with `pnpm`). The full app requires two services running at once — the frontend and the API server — each in its own terminal:
 
 ```bash
-uv run agentic-cinema "A detective finds a forgotten reel in an abandoned Taipei cinema."
+git clone https://github.com/codebyyes/agentic-cinema.git
+cd agentic-cinema
+pnpm install
 ```
 
-You can also run the module directly:
+**Terminal 1 — Frontend:**
+```bash
+pnpm --filter @workspace/agentic-cinema run dev
+```
+
+**Terminal 2 — API Server:**
+```bash
+pnpm --filter @workspace/api-server run dev
+```
+
+Other useful root-level commands:
 
 ```bash
-uv run python -m agentic_cinema "A silent astronaut receives a message from Earth."
+pnpm run build       # production build
+pnpm run typecheck   # type checking
 ```
 
-## 2. Try the example
+## Environment Variables
 
-With no prompt, the CLI uses a built-in cinematic prompt:
+Create a `.env` file (or set the equivalent in Replit Secrets) with:
 
-```bash
-uv run agentic-cinema
-```
+| Variable | Description |
+|---|---|
+| `GOOGLE_API_KEY` | A Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey), with a Prepay/billing balance enabled for image generation |
+| `GEMINI_IMAGE_MODEL` | (optional) Overrides the default image model used for scene generation |
 
-The default model is `gemini-2.0-flash` for the requested connection test.
-Override it without changing code if your account exposes another model:
+The API key is used server-side only and is never exposed to the frontend or included in any client response.
 
-```bash
-GEMINI_MODEL=gemini-2.0-flash uv run agentic-cinema "Write a tense opening scene."
-```
+## Hackathon Submission
 
-## Project layout
+- **Track:** Replit
+- **Built with:** Replit Agent (development), Replit (hosting/deployment)
+- **AI:** Google Gemini API (Google Cloud AI tools)
+- **Live project:** https://agentic-cinema--yes7707.replit.app
+- **Demo video:** _(add link once uploaded)_
 
-```text
-agentic-cinema/
-├── src/agentic_cinema/
-│   ├── cli.py       # Command-line entry point
-│   ├── gemini.py    # Gemini client wrapper
-│   ├── prompts.py   # Reusable cinematic prompt templates
-│   └── scene.py     # Scene-generation workflow
-├── .env.example     # Optional local-environment reference
-└── pyproject.toml   # Python package and dependencies
-```
+## License
 
-## Extending it
-
-The `GeminiClient` wrapper keeps API-specific code in one place. Add new
-workflows beside `scene.py` and reuse `client.generate_text(...)` for each
-agent step. For a multi-agent system, keep each agent's system instruction
-explicit and pass outputs between agents as regular Python values.
-
-## Notes
-
-- Never commit `GEMINI_API_KEY`; use Replit Secrets or another secure environment
-  variable store.
-- The Google Gen AI SDK is used directly so the requested Gemini model can be
-  selected explicitly.
-- If Google no longer serves `gemini-2.0-flash` for your account, set
-  `GEMINI_MODEL` to an available model.
+This project is licensed under the [MIT License](./LICENSE).
