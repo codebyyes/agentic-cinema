@@ -1,6 +1,9 @@
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ErrorBoundary } from '@/components/error-boundary';
+import {
+  ErrorBoundary,
+  type ErrorFallbackProps,
+} from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
@@ -39,51 +42,91 @@ function Home() {
   return (
     <HomeSession
       key={storySession}
+      focusStoryInput={storySession > 0}
       onStartNewStory={() => setStorySession((current) => current + 1)}
     />
   );
 }
 
-function HomeSession({ onStartNewStory }: { onStartNewStory: () => void }) {
+function HomeSession({
+  focusStoryInput,
+  onStartNewStory,
+}: {
+  focusStoryInput: boolean;
+  onStartNewStory: () => void;
+}) {
   const [story, setStory] = useState('');
   const [sourceStory, setSourceStory] = useState('');
-  const [packageResult, setPackageResult] = useState<Awaited<ReturnType<typeof useCreateProductionPackage>>['data']>(undefined);
+  const [packageResult, setPackageResult] = useState<ProductionPackageResult>();
+  const [packageRenderVersion, setPackageRenderVersion] = useState(0);
+  const [isDeveloping, setIsDeveloping] = useState(false);
   const generationVersion = useRef(0);
-  const createPackage = useCreateProductionPackage();
+  const packageAbortController = useRef<AbortController | null>(null);
+  const scrollTimer = useRef<number | null>(null);
+  if (packageAbortController.current === null) {
+    packageAbortController.current = new AbortController();
+  }
+  const createPackage = useCreateProductionPackage({
+    mutation: { gcTime: 0 },
+    request: { signal: packageAbortController.current.signal },
+  });
   const health = useHealthCheck();
+  const isGenerationPending = isDeveloping || createPackage.isPending;
   const generationError =
     createPackage.error instanceof Error
       ? createPackage.error.message
       : 'The studio could not develop that package.';
   const canRetryGeneration = !/credits are depleted|billing/i.test(generationError);
 
+  useEffect(() => {
+    if (!focusStoryInput) return;
+    const focusFrame = window.requestAnimationFrame(() => {
+      document.getElementById('story-input')?.focus();
+    });
+    return () => window.cancelAnimationFrame(focusFrame);
+  }, [focusStoryInput]);
+
+  useEffect(() => () => {
+    generationVersion.current += 1;
+    packageAbortController.current?.abort();
+    if (scrollTimer.current !== null) {
+      window.clearTimeout(scrollTimer.current);
+    }
+  }, []);
+
   const submitStory = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmedStory = story.trim();
-    if (trimmedStory.length < 10 || createPackage.isPending) return;
+    if (trimmedStory.length < 10 || isGenerationPending) return;
     const requestVersion = ++generationVersion.current;
+    setIsDeveloping(true);
     try {
       const result = await createPackage.mutateAsync({ data: { story: trimmedStory } });
       if (requestVersion !== generationVersion.current) return;
       setSourceStory(trimmedStory);
-      setPackageResult(result);
-      window.setTimeout(() => {
+      setPackageResult(normalizeProductionPackage(result));
+      setPackageRenderVersion((current) => current + 1);
+      if (scrollTimer.current !== null) {
+        window.clearTimeout(scrollTimer.current);
+      }
+      scrollTimer.current = window.setTimeout(() => {
         if (requestVersion === generationVersion.current) {
           document.getElementById('production-dossier')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       }, 80);
     } catch {
       // The mutation error is rendered directly below the composer.
+    } finally {
+      if (requestVersion === generationVersion.current) {
+        setIsDeveloping(false);
+      }
     }
   };
 
   const startNewStory = () => {
     generationVersion.current += 1;
-    createPackage.reset();
+    packageAbortController.current?.abort();
     onStartNewStory();
-    window.requestAnimationFrame(() => {
-      document.getElementById('story-input')?.focus();
-    });
   };
 
   const usePrompt = (prompt: string) => {
@@ -144,8 +187,8 @@ function HomeSession({ onStartNewStory }: { onStartNewStory: () => void }) {
                   <RotateCcw size={14} aria-hidden="true" />
                   New Story
                 </button>
-                <button className="generate-button" type="submit" data-testid="button-generate" disabled={story.trim().length < 10 || createPackage.isPending}>
-                  {createPackage.isPending ? (
+                <button className="generate-button" type="submit" data-testid="button-generate" disabled={story.trim().length < 10 || isGenerationPending}>
+                  {isGenerationPending ? (
                     <>
                       <LoaderCircle size={16} className="animate-spin" aria-hidden="true" />
                       Developing your film
@@ -174,7 +217,7 @@ function HomeSession({ onStartNewStory }: { onStartNewStory: () => void }) {
         </div>
       </section>
 
-      {!packageResult && !createPackage.isPending && (
+      {!packageResult && !isGenerationPending && (
         <section className="manifesto" aria-labelledby="manifesto-title">
           <div>
             <p className="section-kicker">The brief</p>
@@ -191,7 +234,7 @@ function HomeSession({ onStartNewStory }: { onStartNewStory: () => void }) {
         </section>
       )}
 
-      {createPackage.isPending && (
+      {isGenerationPending && (
         <section className="results" aria-label="Developing production package" data-testid="state-loading">
           <div className="results-header">
             <div><p className="section-kicker">Developing</p><h2>Finding the<br /><span>first frame.</span></h2></div>
@@ -204,7 +247,18 @@ function HomeSession({ onStartNewStory }: { onStartNewStory: () => void }) {
         </section>
       )}
 
-      {packageResult && <ProductionDossier packageResult={packageResult} sourceStory={sourceStory} />}
+      {packageResult && (
+        <ErrorBoundary
+          key={packageRenderVersion}
+          resetKey={packageRenderVersion}
+          FallbackComponent={ProductionDossierErrorFallback}
+        >
+          <ProductionDossier
+            packageResult={packageResult}
+            sourceStory={sourceStory}
+          />
+        </ErrorBoundary>
+      )}
 
       <footer className="footer">
         <span>Agentic Cinema <span className="footer-mark">/</span> Make the inner world visible.</span>
@@ -215,6 +269,54 @@ function HomeSession({ onStartNewStory }: { onStartNewStory: () => void }) {
 }
 
 type ProductionPackageResult = NonNullable<Awaited<ReturnType<typeof useCreateProductionPackage>>['data']>;
+
+function asDisplayText(value: unknown): string {
+  return typeof value === 'string' ? value : value == null ? '' : String(value);
+}
+
+function normalizeProductionPackage(
+  value: ProductionPackageResult,
+): ProductionPackageResult {
+  const raw = value as unknown as Record<string, unknown>;
+  const rawDialogue = Array.isArray(raw.dialogue) ? raw.dialogue : [];
+  const rawScenes = Array.isArray(raw.scenes) ? raw.scenes : [];
+
+  return {
+    title: asDisplayText(raw.title),
+    logline: asDisplayText(raw.logline),
+    emotionalCore: asDisplayText(raw.emotionalCore),
+    script: asDisplayText(raw.script),
+    dialogue: rawDialogue
+      .filter((block): block is Record<string, unknown> =>
+        Boolean(block) && typeof block === 'object',
+      )
+      .map((block) => ({
+        character: asDisplayText(block.character),
+        parenthetical: asDisplayText(block.parenthetical) || undefined,
+        line: asDisplayText(block.line),
+      })),
+    camera: asDisplayText(raw.camera),
+    lighting: asDisplayText(raw.lighting),
+    music: asDisplayText(raw.music),
+    scenes: rawScenes
+      .filter((scene): scene is Record<string, unknown> =>
+        Boolean(scene) && typeof scene === 'object',
+      )
+      .map((scene, index) => ({
+        number:
+          typeof scene.number === 'number' && Number.isFinite(scene.number)
+            ? scene.number
+            : index + 1,
+        heading: asDisplayText(scene.heading),
+        description: asDisplayText(scene.description),
+        visualBeat: asDisplayText(scene.visualBeat),
+        soundBeat: asDisplayText(scene.soundBeat),
+        shotType: asDisplayText(scene.shotType),
+        lens: asDisplayText(scene.lens),
+        movement: asDisplayText(scene.movement),
+      })),
+  };
+}
 
 const CHARACTER_CUE_PATTERN =
   /(?:\b(?:man|men|male|woman|women|female|boy|boys|girl|girls|he|him|his|she|her|hers|mother|father|mom|dad|son|daughter|brother|sister|husband|wife|uncle|aunt|grandfather|grandmother|friend|friends|child|children)\b|男性|男人|男孩|男生|女性|女人|女孩|女生|他|她|母親|媽媽|父親|爸爸|兒子|女兒|兄弟|哥哥|弟弟|姐妹|姐姐|妹妹|丈夫|妻子|朋友|小孩|孩子)/i;
@@ -290,6 +392,7 @@ function ProductionDossier({
   packageResult: ProductionPackageResult;
   sourceStory: string;
 }) {
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const craft = [
     { label: 'Camera', icon: Camera, text: packageResult.camera },
     { label: 'Lighting', icon: Lightbulb, text: packageResult.lighting },
@@ -342,16 +445,31 @@ function ProductionDossier({
 
         <div className="scenes-heading"><h3>Scene map</h3><span>{packageResult.scenes.length} scenes / ready to shoot</span></div>
         <div className="scenes-list">
-          {packageResult.scenes.map((scene) => (
-            <SceneCard
-              scene={scene}
-              characterContext={buildCharacterContext(packageResult, scene, sourceStory)}
-              environmentContext={buildEnvironmentContext(scene, sourceStory)}
-              emotionalCore={packageResult.emotionalCore}
-              cameraDirection={packageResult.camera}
-              lightingDirection={packageResult.lighting}
-              key={`${scene.number}-${scene.heading}`}
-            />
+          {packageResult.scenes.map((scene, index) => (
+            <ErrorBoundary
+              FallbackComponent={SceneCardErrorFallback}
+              onError={() =>
+                setActiveImageIndex((current) =>
+                  current === index ? current + 1 : current,
+                )
+              }
+              key={`scene-${index}`}
+            >
+              <SceneCard
+                scene={scene}
+                packageResult={packageResult}
+                sourceStory={sourceStory}
+                emotionalCore={packageResult.emotionalCore}
+                cameraDirection={packageResult.camera}
+                lightingDirection={packageResult.lighting}
+                shouldGenerate={index === activeImageIndex}
+                onInitialGenerationSettled={() =>
+                  setActiveImageIndex((current) =>
+                    current === index ? current + 1 : current,
+                  )
+                }
+              />
+            </ErrorBoundary>
           ))}
         </div>
       </div>
@@ -359,24 +477,98 @@ function ProductionDossier({
   );
 }
 
+function ProductionDossierErrorFallback({
+  resetError,
+}: ErrorFallbackProps) {
+  return (
+    <section
+      className="results"
+      aria-label="Production package display error"
+      data-testid="status-production-display-error"
+    >
+      <div className="results-header">
+        <div>
+          <p className="section-kicker">Production dossier</p>
+          <h2>Your film is ready,<br /><span>but the preview paused.</span></h2>
+        </div>
+        <p className="results-meta">
+          This device could not display the package on the first attempt.
+        </p>
+      </div>
+      <div className="dossier-grid">
+        <article className="dossier-card">
+          <div className="card-label"><RefreshCw aria-hidden="true" /> Display recovery</div>
+          <p>Retry the package display without generating the story again.</p>
+          <button type="button" className="new-story-button" onClick={resetError}>
+            <RefreshCw size={14} aria-hidden="true" />
+            Retry display
+          </button>
+        </article>
+      </div>
+    </section>
+  );
+}
+
+function SceneCardErrorFallback({ resetError }: ErrorFallbackProps) {
+  return (
+    <article className="scene-card">
+      <div className="scene-card-body">
+        <div className="scene-image-frame">
+          <div className="scene-image-error" role="alert">
+            <Camera aria-hidden="true" />
+            <p>This scene card could not be displayed on this device.</p>
+            <button type="button" onClick={resetError}>
+              <RefreshCw size={13} aria-hidden="true" />
+              Retry scene
+            </button>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function SceneCard({
   scene,
-  characterContext,
-  environmentContext,
+  packageResult,
+  sourceStory,
   emotionalCore,
   cameraDirection,
   lightingDirection,
+  shouldGenerate,
+  onInitialGenerationSettled,
 }: {
   scene: ProductionScene;
-  characterContext: string;
-  environmentContext: string;
+  packageResult: ProductionPackageResult;
+  sourceStory: string;
   emotionalCore: string;
   cameraDirection: string;
   lightingDirection: string;
+  shouldGenerate: boolean;
+  onInitialGenerationSettled: () => void;
 }) {
-  const sceneImage = useCreateSceneImage();
+  const imageAbortController = useRef<AbortController | null>(null);
+  const copyTimer = useRef<number | null>(null);
+  if (imageAbortController.current === null) {
+    imageAbortController.current = new AbortController();
+  }
+  const sceneImage = useCreateSceneImage({
+    mutation: { gcTime: 0 },
+    request: { signal: imageAbortController.current.signal },
+  });
   const { mutate } = sceneImage;
   const [isCopied, setIsCopied] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
+  const initialGenerationStarted = useRef(false);
+  const characterContext = buildCharacterContext(packageResult, scene, sourceStory);
+  const environmentContext = buildEnvironmentContext(scene, sourceStory);
+
+  useEffect(() => () => {
+    imageAbortController.current?.abort();
+    if (copyTimer.current !== null) {
+      window.clearTimeout(copyTimer.current);
+    }
+  }, []);
 
   const scenePrompt = [
     `${scene.shotType} of ${trimPromptClause(scene.visualBeat)}`,
@@ -385,7 +577,8 @@ function SceneCard({
     `with ${lowerPromptClause(scene.soundBeat)}`,
   ].join(', ') + '.';
 
-  const generateImage = () => {
+  const generateImage = (onSettled?: () => void) => {
+    setHasStarted(true);
     const imageVisualBeat = [
       `Visual beat: ${truncatePromptContext(scene.visualBeat, 650)}`,
       `Overall story emotional core: ${truncatePromptContext(emotionalCore, 350)}`,
@@ -401,6 +594,8 @@ function SceneCard({
         shotType: scene.shotType,
         lens: scene.lens,
       },
+    }, {
+      onSettled,
     });
   };
 
@@ -421,17 +616,22 @@ function SceneCard({
         if (!didCopy) throw new Error('Copy failed');
       }
       setIsCopied(true);
-      window.setTimeout(() => setIsCopied(false), 1800);
+      if (copyTimer.current !== null) {
+        window.clearTimeout(copyTimer.current);
+      }
+      copyTimer.current = window.setTimeout(() => setIsCopied(false), 1800);
     } catch {
       setIsCopied(false);
     }
   };
 
   useEffect(() => {
-    generateImage();
+    if (!shouldGenerate || initialGenerationStarted.current) return;
+    initialGenerationStarted.current = true;
+    generateImage(onInitialGenerationSettled);
     // The scene values are immutable within a generated production package.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scene.visualBeat, scene.shotType, scene.lens, emotionalCore, characterContext, environmentContext, cameraDirection, lightingDirection]);
+  }, [shouldGenerate]);
 
   const imageError =
     sceneImage.error instanceof Error
@@ -454,15 +654,20 @@ function SceneCard({
             <div className="scene-image-error" role="alert" data-testid={`status-scene-image-error-${scene.number}`}>
               <Camera aria-hidden="true" />
               <p>{imageError}</p>
-              <button type="button" onClick={generateImage} disabled={sceneImage.isPending}>
+              <button type="button" onClick={() => generateImage()} disabled={sceneImage.isPending}>
                 <RefreshCw size={13} aria-hidden="true" />
                 Retry image
               </button>
             </div>
-          ) : (
+          ) : hasStarted ? (
             <div className="scene-image-loading" data-testid={`status-scene-image-loading-${scene.number}`}>
               <div className="scene-image-skeleton" />
               <span><LoaderCircle size={14} className="animate-spin" aria-hidden="true" /> Rendering scene {String(scene.number).padStart(2, '0')}</span>
+            </div>
+          ) : (
+            <div className="scene-image-loading" data-testid={`status-scene-image-queued-${scene.number}`}>
+              <div className="scene-image-skeleton" />
+              <span>Scene {String(scene.number).padStart(2, '0')} queued for rendering</span>
             </div>
           )}
         </div>
